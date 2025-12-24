@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>FeedCast | Lawn Advisor</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <style>
+            /* 1. General Page Layout */
+            :root {
+                --sunday-green: #2E7D32;
+                --calendar-red: #e53935;
+            }
+
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                margin: 0; 
+                background: #f0f2f5; 
+                color: #333;
+            }
+
+            .header { 
+                background: var(--sunday-green); 
+                color: white; 
+                padding: 5px 20px; 
+                text-align: center;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+
+            .container { 
+                max-width: 1100px; 
+                margin: auto; 
+                padding: 20px; 
+            }
+
+            /* 2. Map Styling */
+            #map { 
+                height: 40vh;
+                min-height: 300px;
+                width: 100%;
+                border-radius: 15px; 
+                margin-bottom: 30px; 
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                z-index: 1;
+            }
+
+            /* 3. Grid and Card Styling */
+            .grid { 
+                display: grid; 
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+                gap: 20px; 
+            }
+
+            .card { 
+                background: white; 
+                border-radius: 15px; 
+                overflow: hidden; 
+                text-align: center;
+                box-shadow: 0 6px 15px rgba(0,0,0,0.05);
+                transition: transform 0.2s ease;
+                display: flex;
+                flex-direction: column;
+                border-top: 8px solid #ccc; /* Default border */
+            }
+
+            .card:hover { 
+                transform: translateY(-5px); 
+            }
+
+            /* Status Color Coding for Top Borders */
+            .card.GREEN { border-top-color: #43A047; }
+            .card.YELLOW { border-top-color: #FBC02D; }
+            .card.RED { border-top-color: #E53935; }
+
+            /* 4. Calendar Icon Component */
+            .calendar-icon {
+                width: 70px;
+                margin: 20px auto 10px auto;
+                border: 1px solid #ddd;
+                border-radius: 10px;
+                overflow: hidden;
+                background: white;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .cal-month { 
+                background: var(--calendar-red); 
+                color: white; 
+                font-size: 0.7rem; 
+                font-weight: bold; 
+                padding: 4px 0;
+                text-align: center;
+                text-transform: uppercase;
+            }
+
+            .cal-day { 
+                font-size: 1.5rem; 
+                font-weight: bold; 
+                color: #222; 
+                padding: 8px 0;
+                text-align: center;
+            }
+
+            /* 5. Typography and Details */
+            .day-label { 
+                color: #777; 
+                font-weight: 600; 
+                text-transform: uppercase; 
+                font-size: 0.8rem;
+                letter-spacing: 0.5px;
+            }
+
+            .temp-large { 
+                font-size: 1.8rem; 
+                font-weight: 800; 
+                margin: 10px 0; 
+                color: #1a1a1a; 
+            }
+
+            .rain-stat {
+                font-size: 0.9rem;
+                color: #555;
+                margin-bottom: 15px;
+            }
+
+            /* 6. Dynamic Status Message Box */
+            .status-msg { 
+                padding: 15px; 
+                font-size: 0.85rem; 
+                line-height: 1.4;
+                flex-grow: 1; /* Pushes box to the bottom of the card */
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                border-top: 1px solid transparent;
+            }
+
+            /* Status-specific background colors */
+            .card.GREEN .status-msg { background-color: #e8f5e9; color: #1b5e20; border-top-color: #c8e6c9; }
+            .card.YELLOW .status-msg { background-color: #fffde7; color: #f57f17; border-top-color: #fff9c4; }
+            .card.RED .status-msg { background-color: #ffebee; color: #b71c1c; border-top-color: #ffcdd2; }
+
+            .status-badge {
+                font-weight: bold;
+                text-transform: uppercase;
+                display: block;
+                margin-bottom: 5px;
+            }
+        </style>
+    </head>
+    <body onload="askLocation()">
+
+        <div class="header">
+            <h1>FeedCast</h1>
+            <p>Your 10-Day Nutrient Application Window</p>
+        </div>
+
+        <div class="container">
+            <div id="map"></div>
+            <div class="grid">
+                {% for day in forecast %}
+                <div class="card {{ day.status }}">
+                    <div class="calendar-icon">
+                        <div class="cal-month">{{ day.month|upper }}</div>
+                        <div class="cal-day">{{ day.day_num }}</div>
+                    </div>
+                    
+                    <div class="day-label">{{ day.day_name }}</div>
+                    
+                    <div class="temp-large">{{ day.temp }}°F</div>
+                    
+                    <p style="font-size: 0.9rem; color: #555;">
+                        💧 {{ day.rain }}% Rain Chance
+                    </p>
+
+                    <div class="status-msg">
+                        <strong>{{ day.status }}</strong><br>
+                        {{ day.msg }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script>
+            function askLocation() {
+                if (navigator.geolocation && !window.location.search.includes('lat')) {
+                    navigator.geolocation.getCurrentPosition((pos) => {
+                        // This sends the lat/lon back to your Python View via the URL
+                        window.location.href = `?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`;
+                    });
+                }
+            }
+
+            // Initialize the Leaflet Map using the variables from Python
+            var map = L.map('map').setView([{{ lat }}, {{ lon }}], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            L.marker([{{ lat }}, {{ lon }}]).addTo(map).bindPopup("Current Lawn").openPopup();
+        </script>
+
+    </body>
+</html>
