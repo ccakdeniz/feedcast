@@ -1,17 +1,15 @@
 import requests 
 from django.shortcuts import render
 from datetime import datetime
+from .services import WeatherService
 
 def home(request):
     # Get location from the URL (or use Boulder,CO as default)
     lat = request.GET.get('lat', '40.0150')
     lon = request.GET.get('lon', '-105.2705')
 
-    # Build the weather API request URL
-    api_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,precipitation_probability_max&timezone=auto&forecast_days=10&temperature_unit=fahrenheit"
-
-    response = requests.get(api_url).json()
-    daily_data = response.get('daily', {})
+    data = WeatherService.get_forecast(lat, lon)
+    daily_data = data.get('daily', {})
 
     forecast_list = []
 
@@ -53,7 +51,7 @@ def get_lawn_advice(temp, rain, next_day_rain=None):
         message = "IDEAL: Perfect temperature and low rain for application."
     else:
         status = "YELLOW"
-        message = "CAUTION: Conditions are okay, but not perfect. Check local wind."
+        message = "CAUTION: Conditions are okay, but not perfect."
 
     # Look-ahead Logic
     if status == "GREEN" and next_day_rain is not None and next_day_rain > 70:
